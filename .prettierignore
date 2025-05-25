@@ -1,0 +1,9 @@
+# node
+node_modules/
+dist/
+
+# Webstorm files
+.idea/
+
+# VS code files
+.vscode/

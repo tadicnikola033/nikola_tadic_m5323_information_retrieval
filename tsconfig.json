@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "CommonJS",
+    "target": "es2017",
+    "lib": ["es5", "es6", "es2015", "es2017", "es2021"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "sourceMap": true,
     "strict": true,
-    "esModuleInterop": true
+    "noImplicitAny": false,
+    "useUnknownInCatchVariables": false,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
 }
