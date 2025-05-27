@@ -25,4 +25,4 @@ npm run read -- --doc clueweb12-0000tw-13-04988
 npm run read -- --term asparagus
 
 #### Get term occurrences in document
-npm run read -- --term asparagus --doc clueweb12-0000tw-13-04988
+npm run read -- --term health --doc clueweb12-0000tw-13-04988

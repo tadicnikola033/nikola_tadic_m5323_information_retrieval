@@ -3,8 +3,6 @@ import path from 'path';
 import * as natural from 'natural';
 import { program } from 'commander';
 
-const stemmer = natural.PorterStemmer;
-
 interface TermInfo {
     termId: number;
     offset: number;
@@ -19,26 +17,34 @@ interface DocInfo {
 }
 
 class IndexReader {
-    private docIdMap: Map<string, number>;
-    private reverseDocIdMap: Map<number, string>;
-    private termIdMap: Map<string, number>;
-    private reverseTermIdMap: Map<number, string>;
-    private termInfoMap: Map<number, TermInfo>;
-    private docInfoMap: Map<number, DocInfo>;
+    private readonly stemmer = natural.PorterStemmer;
+    private readonly tokenizerOutputDir: string;
+    private readonly indexOutputDir: string;
+
+    private readonly docIdMap: Map<string, number>;
+    private readonly reverseDocIdMap: Map<number, string>;
+    private readonly termIdMap: Map<string, number>;
+    private readonly reverseTermIdMap: Map<number, string>;
+    private readonly termInfoMap: Map<number, TermInfo>;
+    private readonly docInfoMap: Map<number, DocInfo>;
 
     constructor() {
+        this.tokenizerOutputDir = path.join(__dirname, '../output_tokenizer');
+        this.indexOutputDir = path.join(__dirname, '../output_index_construct');
+
         this.docIdMap = new Map();
         this.reverseDocIdMap = new Map();
         this.termIdMap = new Map();
         this.reverseTermIdMap = new Map();
         this.termInfoMap = new Map();
         this.docInfoMap = new Map();
+        
         this.loadMappings();
     }
 
     private loadMappings(): void {
         // Load docids.txt
-        const docIdsContent = fs.readFileSync(path.join(__dirname, '../output_tokenizer/docids.txt'), 'utf-8');
+        const docIdsContent = fs.readFileSync(path.join(this.tokenizerOutputDir, 'docids.txt'), 'utf-8');
         docIdsContent.split('\n').filter(line => line.trim()).forEach(line => {
             const [id, name] = line.split('\t');
             this.docIdMap.set(name, parseInt(id));
@@ -46,7 +52,7 @@ class IndexReader {
         });
 
         // Load termids.txt
-        const termIdsContent = fs.readFileSync(path.join(__dirname, '../output_tokenizer/termids.txt'), 'utf-8');
+        const termIdsContent = fs.readFileSync(path.join(this.tokenizerOutputDir, 'termids.txt'), 'utf-8');
         termIdsContent.split('\n').filter(line => line.trim()).forEach(line => {
             const [id, term] = line.split('\t');
             this.termIdMap.set(term, parseInt(id));
@@ -54,7 +60,7 @@ class IndexReader {
         });
 
         // Load term_info.txt
-        const termInfoContent = fs.readFileSync(path.join(__dirname, '../output_index_construct/term_info.txt'), 'utf-8');
+        const termInfoContent = fs.readFileSync(path.join(this.indexOutputDir, 'term_info.txt'), 'utf-8');
         termInfoContent.split('\n').filter(line => line.trim()).forEach(line => {
             const [termId, offset, occurrences, docCount] = line.split('\t').map(Number);
             this.termInfoMap.set(termId, {
@@ -66,7 +72,7 @@ class IndexReader {
         });
 
         // Process doc_index.txt to build document statistics
-        const docIndexContent = fs.readFileSync(path.join(__dirname, '../output_tokenizer/doc_index.txt'), 'utf-8');
+        const docIndexContent = fs.readFileSync(path.join(this.tokenizerOutputDir, 'doc_index.txt'), 'utf-8');
         docIndexContent.split('\n').filter(line => line.trim()).forEach(line => {
             const [docId, termId, ...positions] = line.split('\t').map(Number);
             
@@ -104,7 +110,7 @@ class IndexReader {
     }
 
     public getTermInfo(term: string): void {
-        const stemmedTerm = stemmer.stem(term.toLowerCase());
+        const stemmedTerm = this.stemmer.stem(term.toLowerCase());
         const termId = this.termIdMap.get(stemmedTerm);
         if (!termId) {
             console.error('Term not found:', term);
@@ -125,7 +131,7 @@ class IndexReader {
     }
 
     public getTermDocumentInfo(term: string, docName: string): void {
-        const stemmedTerm = stemmer.stem(term.toLowerCase());
+        const stemmedTerm = this.stemmer.stem(term.toLowerCase());
         const termId = this.termIdMap.get(stemmedTerm);
         const docId = this.docIdMap.get(docName);
 
@@ -141,13 +147,13 @@ class IndexReader {
         }
 
         // Read the inverted list from term_index.txt at the specific offset
-        const fd = fs.openSync(path.join(__dirname, '../output_index_construct/term_index.txt'), 'r');
+        const fd = fs.openSync(path.join(this.indexOutputDir, 'term_index.txt'), 'r');
         const buffer = Buffer.alloc(4096); // Reasonable buffer size
         fs.readSync(fd, buffer, 0, buffer.length, termInfo.offset);
         fs.closeSync(fd);
 
         const line = buffer.toString('utf-8').split('\n')[0];
-        const [listTermId, ...postings] = line.split('\t');
+        const [, ...postings] = line.split('\t');
 
         // Decode delta-encoded positions for the specific document
         let currentDocId = 0;
@@ -192,30 +198,32 @@ class IndexReader {
     }
 }
 
-// Set up command line interface
-program
-    .option('--doc <docName>', 'Document name')
-    .option('--term <term>', 'Term to search for')
-    .parse(process.argv);
+// Main execution
+if (require.main === module) {
+    program
+        .option('--doc <docName>', 'Document name')
+        .option('--term <term>', 'Term to search for')
+        .parse(process.argv);
 
-const options = program.opts();
+    const options = program.opts();
 
-if (!options.doc && !options.term) {
-    console.error('Please provide either --doc or --term option');
-    process.exit(1);
-}
-
-try {
-    const reader = new IndexReader();
-
-    if (options.doc && options.term) {
-        reader.getTermDocumentInfo(options.term, options.doc);
-    } else if (options.doc) {
-        reader.getDocumentInfo(options.doc);
-    } else if (options.term) {
-        reader.getTermInfo(options.term);
+    if (!options.doc && !options.term) {
+        console.error('Please provide either --doc or --term option');
+        process.exit(1);
     }
-} catch (error) {
-    console.error('Error:', error.message);
-    process.exit(1);
+
+    try {
+        const reader = new IndexReader();
+
+        if (options.doc && options.term) {
+            reader.getTermDocumentInfo(options.term, options.doc);
+        } else if (options.doc) {
+            reader.getDocumentInfo(options.doc);
+        } else if (options.term) {
+            reader.getTermInfo(options.term);
+        }
+    } catch (error) {
+        console.error('Error:', error.message);
+        process.exit(1);
+    }
 }
