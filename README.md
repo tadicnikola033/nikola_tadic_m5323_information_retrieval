@@ -10,3 +10,19 @@ https://course.khoury.northeastern.edu/cs6200s14/pr1/pr1.html
 - Korišćen je skup tekstova sa nazivom "corpus".
 - Da bi projekat radio, potrebno je skinuti taj skup tekstova sa linka: https://www.ccs.neu.edu/course/cs6200s14/ssl/data/corpus.tgz
  i raspakovati ga i smestiti u resources/corpus.
+
+### Pokretanje projekta:
+1. npm i
+2. npm build
+3. npm run start (pokrece prvo tokenizer, pa potom kreira inverted index)
+4. npm run read (omogucava analizu određenog dokumenta ili termina, potrebno je proslediti parametre)
+
+### Primeri za parametre read skripte:
+#### Get document info
+npm run read -- --doc clueweb12-0000tw-13-04988
+
+#### Get term info
+npm run read -- --term asparagus
+
+#### Get term occurrences in document
+npm run read -- --term asparagus --doc clueweb12-0000tw-13-04988
